@@ -1,8 +1,8 @@
 package network
 
 const (
-	PORT = 9091
+	PORT = 9090
 	TIMEOUT = 20
-	CHUNKSIZE = 64 * 1024
+	CHUNKSIZE = 1024 * 1024
 	SERVICENAME = "_yeet"
 )

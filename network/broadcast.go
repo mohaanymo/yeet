@@ -125,11 +125,11 @@ func ReceiverMode() {
 
 	fmt.Printf("%s is waiting to receive files...\n", hostname)
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", PORT))
+	listener, err := net.Listen("tcp4", fmt.Sprintf(":%d", PORT))
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// Announce that we're ready to receive
 	server, err := zeroconf.Register(
 		hostname,                   // Computer name

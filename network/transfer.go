@@ -12,11 +12,6 @@ import (
 	"github.com/mohaanymo/yeet/protocol"
 )
 
-const (
-	// ChunkSize is the size of each file data chunk (1 MB)
-	ChunkSize = 1024 * 1024
-)
-
 func AcceptConnections(listener net.Listener) {
 	
 	for {
@@ -52,7 +47,7 @@ func SendFile(f *protocol.File, conn net.Conn) error {
 		return fmt.Errorf("error sending metadata msg: %v", err)
 	}
 
-	buf := make([]byte, ChunkSize)
+	buf := make([]byte, CHUNKSIZE)
 	totalSent := int64(0)
 	pb := NewProgressBar(f.Metadata.FileSize)
 
@@ -138,7 +133,7 @@ func ReceiveFile(conn net.Conn) error {
             if err != nil {
                 return fmt.Errorf("failed to create output file: %v", err)
             }
-			writer = bufio.NewWriterSize(file, ChunkSize)
+			writer = bufio.NewWriterSize(file, CHUNKSIZE)
 			pb = NewProgressBar(metadata.FileSize)
 
 		case protocol.MsgTypeFileData:
