@@ -1,4 +1,6 @@
-# 📨 Yeet
+<p align="center">
+  <img src="https://i.ibb.co/B5BhtVdv/yeet-banner.png" alt="Yeet Banner" />
+</p>
 
 A fast, simple, and decentralized file transfer tool that uses mDNS (Zeroconf) for automatic device discovery on your local network. No configuration needed—just send and receive files seamlessly between devices.
 
@@ -66,7 +68,6 @@ This will:
 2. **Sender Discovers**: When you run `yeet send`, the tool searches for all devices advertising the yeet service
 3. **User Selection**: You interactively choose which receiver to send the file to
 4. **Direct Transfer**: A TCP connection is established and the file is sent directly between devices
-5. **Cleanup**: Both sender and receiver clean up and wait for the next operation
 
 ### Network Protocol
 
@@ -100,24 +101,6 @@ yeet/
     └── utils.go            # Protocol utilities
 ```
 
-## Troubleshooting
-
-### "No devices found" error
-- Make sure the receiver is running on another device
-- Ensure both devices are on the same network
-- Check that no firewall is blocking TCP port 9090
-- Verify mDNS is enabled on both devices (usually enabled by default)
-
-### Connection timeout
-- Verify the network connection between devices
-- Try increasing the discovery timeout if devices are slow to respond
-- Check if devices are on the same subnet
-
-### File transfer fails
-- Ensure the file path is correct and the file exists
-- Check that there's enough disk space on the receiver
-- Verify that the receiver is still listening when the sender connects
-
 ## Development
 
 ### Requirements
@@ -128,10 +111,6 @@ yeet/
 ```bash
 go test ./...
 ```
-
-## License
-
-MIT License - See LICENSE file for details
 
 ## Contributing
 
