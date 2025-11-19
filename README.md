@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="https://i.ibb.co/B5BhtVdv/yeet-banner.png" alt="Yeet Banner" />
-</p>
+![YEET Banner](./assets/yeet-banner.svg)
 
 A fast, simple, and decentralized file transfer tool that uses mDNS (Zeroconf) for automatic device discovery on your local network. No configuration needed—just send and receive files seamlessly between devices.
 
