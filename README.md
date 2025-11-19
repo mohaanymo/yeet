@@ -1,1 +1,142 @@
-"# yeet" 
+# 📨 Yeet
+
+A fast, simple, and decentralized file transfer tool that uses mDNS (Zeroconf) for automatic device discovery on your local network. No configuration needed—just send and receive files seamlessly between devices.
+
+## Features
+
+- **🔍 Automatic Discovery** - Devices are automatically discovered on your local network using mDNS
+- **🛡️ Peer-to-Peer** - Direct TCP connection between sender and receiver, no intermediary servers
+- **⚡ Fast** - Simple binary protocol optimized for speed
+- **🎯 Interactive Selection** - Choose which device to send files to from a list of available receivers
+- **💻 Cross-Platform** - Works on Windows, macOS, and Linux
+- **🔧 Zero Configuration** - Just run and go, no setup required
+
+## Installation
+
+### Prerequisites
+- Go 1.23.5 or higher
+
+### Build from Source
+
+```bash
+git clone https://github.com/mohaanymo/yeet.git
+cd yeet
+go mod download
+go build -o yeet
+```
+
+## Usage
+
+### Receiver Mode
+Start listening for incoming files on your device:
+
+```bash
+./yeet receive
+```
+
+This will:
+- Announce your device on the local network
+- Listen for incoming file transfers on port 9090
+- Wait for a sender to connect and transfer a file
+- Automatically save received files
+
+### Sender Mode
+Send a file to an available receiver:
+
+```bash
+./yeet send <filepath>
+```
+
+This will:
+1. Search for devices running in receiver mode (30 second timeout)
+2. Display a numbered list of available receivers
+3. Let you choose which device to send to (or wait for more devices)
+4. Connect and transfer the file
+
+**Example:**
+```bash
+./yeet send myfile.zip
+./yeet send /path/to/document.pdf
+./yeet send /home/user/photos/vacation.tar.gz
+```
+
+## How It Works
+
+1. **Receiver Advertises**: When you run `yeet receive`, the device registers itself on the mDNS network
+2. **Sender Discovers**: When you run `yeet send`, the tool searches for all devices advertising the yeet service
+3. **User Selection**: You interactively choose which receiver to send the file to
+4. **Direct Transfer**: A TCP connection is established and the file is sent directly between devices
+5. **Cleanup**: Both sender and receiver clean up and wait for the next operation
+
+### Network Protocol
+
+Yeet uses a custom binary protocol for efficient file transfer:
+- Protocol version negotiation
+- File metadata transmission (filename, size, etc.)
+- Chunked file data transfer
+- Integrity verification
+
+## Configuration
+
+By default, Yeet uses:
+- **Port**: 9090 (TCP)
+- **Service Name**: `_yeet._tcp`
+- **Network**: Local network only (mDNS)
+- **Discovery Timeout**: 30 seconds for sender mode
+
+## Architecture
+
+```
+yeet/
+├── main.go                 # Entry point and CLI handler
+├── network/
+│   ├── broadcast.go        # Sender/Receiver modes and discovery
+│   ├── config.go           # Network configuration constants
+│   ├── transfer.go         # File transfer logic
+│   └── progress.go         # Transfer progress tracking
+└── protocol/
+    ├── file.go             # File metadata handling
+    ├── message.go          # Protocol message definitions
+    └── utils.go            # Protocol utilities
+```
+
+## Troubleshooting
+
+### "No devices found" error
+- Make sure the receiver is running on another device
+- Ensure both devices are on the same network
+- Check that no firewall is blocking TCP port 9090
+- Verify mDNS is enabled on both devices (usually enabled by default)
+
+### Connection timeout
+- Verify the network connection between devices
+- Try increasing the discovery timeout if devices are slow to respond
+- Check if devices are on the same subnet
+
+### File transfer fails
+- Ensure the file path is correct and the file exists
+- Check that there's enough disk space on the receiver
+- Verify that the receiver is still listening when the sender connects
+
+## Development
+
+### Requirements
+- Go 1.23.5+
+- `github.com/grandcat/zeroconf` - mDNS/Zeroconf implementation
+
+### Testing
+```bash
+go test ./...
+```
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Contributing
+
+Contributions are welcome! Feel free to submit issues and pull requests to improve Yeet.
+
+## Project Status
+
+Yeet is actively under development. Current features are functional, with ongoing improvements to transfer speed and reliability.
