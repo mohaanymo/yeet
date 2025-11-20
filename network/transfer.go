@@ -5,94 +5,106 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
-	"strings"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/mohaanymo/yeet/protocol"
 )
 
-func AcceptConnections(listener net.Listener) {
-	
+// AcceptConnection accepts only one connection then retunr it
+func AcceptConnection(listener net.Listener) *net.Conn {
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("error in accepting connection")
 			continue
 		}
-		defer conn.Close()
-		ReceiveFile(conn)
-		break
+		return &conn
 	}
 }
 
-func ConnectTo(addr string) (net.Conn, error) {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
+// SendFiles takes an array of files and start sending them one by one
+func SendFiles(files []string, conn net.Conn) error {
 
-	fmt.Printf("connected to %s\n", addr)
+	for _, filePath := range files {
 
-	return conn, nil
-}
-
-func SendFile(f *protocol.File, conn net.Conn) error {
-	defer f.Reader.Close()
-
-	// Sending metadata message
-	metadataMsg := protocol.NewFileMetadataMessage(f)
-	_, err := conn.Write(metadataMsg.Encode())
-	if err != nil {
-		return fmt.Errorf("error sending metadata msg: %v", err)
-	}
-
-	buf := make([]byte, CHUNKSIZE)
-	totalSent := int64(0)
-	pb := NewProgressBar(f.Metadata.FileSize)
-
-	for {
-		n, err := f.Reader.Read(buf)
-
-		if err == io.EOF || n == 0 {
-			break
-		}
-
+		// Fet the filename and create a new file struct
+		filename := filepath.Base(filePath)
+		file, err := protocol.NewFile(filename, filePath)
 		if err != nil {
-			err = fmt.Errorf("failed reading into buffer: %v", err)
-			errMsg := protocol.NewErrorMessage(err.Error())
-			conn.Write(errMsg.Encode())
+			log.Fatal(err)
 			return err
 		}
 
-		chunkMsg := protocol.NewFileDataMessage(buf[:n])
-		_, err = conn.Write(chunkMsg.Encode())
+		// Sending metadata message
+		metadataMsg := protocol.NewFileMetadataMessage(file)
+		_, err = conn.Write(metadataMsg.Encode())
 		if err != nil {
-			fmt.Printf("error writing data: %v\n", err)
+			return fmt.Errorf("error sending metadata msg: %v", err)
 		}
-		totalSent += int64(n)
-		pb.Update(totalSent)
-	}
 
-	// Finish sending
-	pb.Finish()
-	completeMsg := protocol.NewFileCompleteMessage()
-	_, err = conn.Write(completeMsg.Encode())
-	if err != nil {
-		return fmt.Errorf("failed to send completion message: %w", err)
+		// Printing the sending filename
+		fmt.Println(file.Metadata.Filename)
+
+		// Initialize some values to start the transfer process
+		buf := make([]byte, CHUNKSIZE)
+		totalSent := int64(0)
+		pb := NewProgressBar(file.Metadata.FileSize)
+
+		for {
+			// reading bytes from file into the buffer
+			n, err := file.Reader.Read(buf)
+			if err == io.EOF || n == 0 {
+				break
+			}
+			if err != nil {
+				err = fmt.Errorf("failed reading into buffer: %v", err)
+				errMsg := protocol.NewErrorMessage(err.Error())
+				conn.Write(errMsg.Encode())
+				return err
+			}
+
+			chunkMsg := protocol.NewFileDataMessage(buf[:n])
+			_, err = conn.Write(chunkMsg.Encode())
+			if err != nil {
+				fmt.Printf("error writing data: %v\n", err)
+			}
+
+			// Updating progress bar
+			totalSent += int64(n)
+			pb.Update(totalSent)
+		}
+
+		// Finish sending
+		pb.Finish()
+		completeMsg := protocol.NewFileCompleteMessage()
+		_, err = conn.Write(completeMsg.Encode())
+		if err != nil {
+			return fmt.Errorf("failed to send completion message: %w", err)
+		}
+		file.Reader.Close()
+
 	}
+	
 	return nil
 }
 
-func ReceiveFile(conn net.Conn) error {
+func ReceiveFiles(conn net.Conn) error {
 	defer conn.Close()
 
+	// Initialize some values preparing for receving files
 	var metadata *protocol.Metadata
 	var writer *bufio.Writer
 	var file *os.File
 	var receivedBytes int64 = 0
 	var pb *ProgressBar
 
+
+	// just for safety
 	defer func() {
 		if writer != nil {
 			writer.Flush()
@@ -103,26 +115,27 @@ func ReceiveFile(conn net.Conn) error {
 	}()
 
 	for {
+
 		msg, err := protocol.Decode(conn)
 
 		if err != nil {
-            if errors.Is(err, io.EOF) {
-                fmt.Printf("[*] %s disconnected\n", conn.RemoteAddr())
-                return nil
-            }
-            if strings.Contains(err.Error(), "failed to read header") {
-                fmt.Printf("[*] %s closed the connection cleanly\n", conn.RemoteAddr())
-                return nil
-            }
-			err = fmt.Errorf("[-] Error reading message from %s: %v", conn.RemoteAddr(), err)
-            fmt.Println(err.Error())
-            return err
-        }
+			if errors.Is(err, io.EOF) {
+				fmt.Printf("\n[*] %s disconnected\n", conn.RemoteAddr())
+				return nil
+			}
+			if strings.Contains(err.Error(), "failed to read header") {
+				fmt.Printf("\n[*] %s closed the connection cleanly\n", conn.RemoteAddr())
+				return nil
+			}
+			err = fmt.Errorf("\n[-] Error reading message from %s: %v", conn.RemoteAddr(), err)
+			fmt.Println(err.Error())
+			return err
+		}
 
 		switch msg.Type {
 
 		case protocol.MsgTypeError:
-			fmt.Printf("message type error: %s", string(msg.Payload))
+			fmt.Printf("message type error: %s\n", string(msg.Payload))
 
 		case protocol.MsgTypeFileMetadata:
 			metadata, err = protocol.ParseFileMetadata(msg.Payload)
@@ -130,11 +143,14 @@ func ReceiveFile(conn net.Conn) error {
 				return fmt.Errorf("parsing metadata error: %v", err)
 			}
 			file, err = os.Create(metadata.Filename)
-            if err != nil {
-                return fmt.Errorf("failed to create output file: %v", err)
-            }
+			if err != nil {
+				return fmt.Errorf("failed to create output file: %v", err)
+			}
 			writer = bufio.NewWriterSize(file, CHUNKSIZE)
 			pb = NewProgressBar(metadata.FileSize)
+			
+			// Printing sending filename
+			fmt.Println(metadata.Filename)
 
 		case protocol.MsgTypeFileData:
 			if writer == nil {
@@ -146,6 +162,7 @@ func ReceiveFile(conn net.Conn) error {
 				return fmt.Errorf("error writing to file: %v", err)
 			}
 
+			// Updating progress bar
 			receivedBytes += int64(n)
 			pb.Update(receivedBytes)
 
@@ -153,12 +170,18 @@ func ReceiveFile(conn net.Conn) error {
 			if writer != nil {
 				writer.Flush()
 			}
+			if file != nil {
+				file.Close()
+			}
+
 			pb.Finish()
-			return nil
+			
+			// zeroing vars to send another file
+			metadata, pb = nil, nil
+			receivedBytes = 0
 
 		default:
 			return fmt.Errorf("unexpected message type: %d", msg.Type)
-
 		}
 
 	}

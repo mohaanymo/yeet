@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/grandcat/zeroconf"
@@ -14,10 +13,12 @@ import (
 )
 
 // SENDER MODE: Discovers receivers and lets user choose
-func SenderMode(filePath string) {
-    filename := filepath.Base(filePath)
-    results := make(chan *zeroconf.ServiceEntry)
+func SenderMode(filesAndDirs []string) {
     
+    results := make(chan *zeroconf.ServiceEntry)
+    receivers := []*zeroconf.ServiceEntry{}
+    var target *zeroconf.ServiceEntry
+
     // Add timeout for discovery
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     
@@ -35,9 +36,6 @@ func SenderMode(filePath string) {
         log.Fatal(err)
         return
     }
-    
-    receivers := []*zeroconf.ServiceEntry{}
-    var target *zeroconf.ServiceEntry
     
     // collect results
     go func() {
@@ -94,26 +92,24 @@ func SenderMode(filePath string) {
         return
     }
     
+    // connect to receiver
     addr := fmt.Sprintf("%s:%d", target.AddrIPv4[0], target.Port)
-    conn, err := ConnectTo(addr)
-    if err != nil {
+    conn, err := net.Dial("tcp", addr)
+	if err != nil {
         log.Fatalf("Cannot connect to the device: %v", err)
         return
     }
+
+	fmt.Printf("connected to %s\n", addr)
+
     defer conn.Close()
 
     fmt.Printf("Connected to %s, sending file...\n", target.HostName)
     
-    file, err := protocol.NewFile(filename, filePath)
-    if err != nil {
-        log.Fatal(err)
-        return
-    }
-    
-    SendFile(file, conn)
-    
-    fmt.Println("File sent successfully!")
-    
+    // get all files and start sending them
+    files := protocol.ExtractFilesFromDirs(filesAndDirs)
+    SendFiles(files, conn)
+
 }
 
 // RECEIVER MODE: Announces "I'm ready to receive files!"
@@ -148,7 +144,7 @@ func ReceiverMode() {
 	defer listener.Close()
 
 	fmt.Printf("Listening on port %d...\n", PORT)
-	AcceptConnections(listener)
-	fmt.Println("File received successfully!")
+	conn := AcceptConnection(listener)
+    ReceiveFiles(*conn)
 
 }
