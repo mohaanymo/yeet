@@ -31,7 +31,7 @@ go build -o yeet
 Start listening for incoming files on your device:
 
 ```bash
-./yeet receive
+./yeet
 ```
 
 This will:
@@ -44,28 +44,29 @@ This will:
 Send a file to an available receiver:
 
 ```bash
-./yeet send <filepath>
+./yeet <filepath> <dir> ...
 ```
 
 This will:
-1. Search for devices running in receiver mode (30 second timeout)
-2. Display a numbered list of available receivers
-3. Let you choose which device to send to (or wait for more devices)
-4. Connect and transfer the file
+1. Collect all files you want to send
+2. Search for devices running in receiver mode (30 second timeout)
+3. Display a numbered list of available receivers
+4. Let you choose which device to send to (or wait for more devices)
+5. Connect and transfer the file
 
 **Example:**
 ```bash
-./yeet send myfile.zip
-./yeet send /path/to/document.pdf
-./yeet send /home/user/photos/vacation.tar.gz
+./yeet myfile.zip
+./yeet "/path/to/my folder"
+./yeet /home/user/photos/vacation.tar.gz
 ```
 
 ## How It Works
 
-1. **Receiver Advertises**: When you run `yeet receive`, the device registers itself on the mDNS network
-2. **Sender Discovers**: When you run `yeet send`, the tool searches for all devices advertising the yeet service
-3. **User Selection**: You interactively choose which receiver to send the file to
-4. **Direct Transfer**: A TCP connection is established and the file is sent directly between devices
+1. **Receiver Advertises**: When you run `yeet`, the device registers itself on the mDNS network
+2. **Sender Discovers**: When you run `yeet "somefiles"`, the tool searches for all devices advertising the yeet service
+3. **User Selection**: You interactively choose which receiver to send files to
+4. **Direct Transfer**: A TCP connection is established and the files are sent directly between devices
 
 ### Network Protocol
 
@@ -104,11 +105,6 @@ yeet/
 ### Requirements
 - Go 1.23.5+
 - `github.com/grandcat/zeroconf` - mDNS/Zeroconf implementation
-
-### Testing
-```bash
-go test ./...
-```
 
 ## Contributing
 
